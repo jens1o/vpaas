@@ -145,6 +145,12 @@ pub async fn execute_job_using_ffmpeg(
                         percentage: out_time_ms.0.as_secs_f64() / duration.0.as_secs_f64(),
                         state: ProgressState::Started,
                     });
+                } else {
+                    // we cannot say how far we have got, yet we can send a pulse we're still alive
+                    on_progress(ProgressUpdate {
+                        percentage: f64::NAN,
+                        state: ProgressState::Started,
+                    });
                 }
             }
 
