@@ -37,47 +37,28 @@ async fn main() {
     let client = redis::Client::open("redis://127.0.0.1/").unwrap();
 
     let app = Router::new()
-        // `GET /` goes to `root`
         .route("/", get(root))
         .route("/videos", post(new_video_job))
         .layer(CorsLayer::new().allow_origin(cors::Any))
         .layer(DefaultBodyLimit::max(1024 * 100_000))
         .layer(Extension(client));
 
-    // run our app with hyper
-    // `axum::Server` is a re-export of `hyper::Server`
     let addr = SocketAddr::from(([127, 0, 0, 1], 9000));
     tracing::info!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
         .unwrap();
-
-    // let job = TranscoderJob::new(
-    //     "./bla.mp4".into(),
-    //     "./transcoded.mp4".into(),
-    //     Dimensions::new(320, 240),
-    //     Some("copy".into()),
-    // );
-
-    // let job_json = serde_json::to_string(&job).unwrap();
-
-    // con.rpush::<_, _, u128>("vpaas:queue", job_json)
-    //     .await
-    //     .unwrap();
 }
 
-// basic handler that responds with a static string
 async fn root() -> &'static str {
     "Hello, World!"
 }
 
 async fn new_video_job(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
     Extension(rclient): Extension<redis::Client>,
     mut payload: Multipart,
-) -> (StatusCode, Json<String>) {
+) -> (StatusCode, String) {
     let mut filename = Mutex::new(None);
     let mut new_dimensions = Mutex::new(None);
 
@@ -108,7 +89,7 @@ async fn new_video_job(
             _ => {
                 return (
                     StatusCode::BAD_REQUEST,
-                    Json(String::from("unknown field given in multipart")),
+                    String::from("unknown field given in multipart"),
                 );
             }
         };
@@ -117,10 +98,7 @@ async fn new_video_job(
     let filename: String = match filename.into_inner().unwrap() {
         Some(filename) => filename,
         None => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(String::from("missing filename")),
-            );
+            return (StatusCode::BAD_REQUEST, String::from("missing filename"));
         }
     };
 
@@ -129,7 +107,7 @@ async fn new_video_job(
         None => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(String::from("missing new dimensions")),
+                String::from("missing new dimensions"),
             );
         }
     };
@@ -137,7 +115,6 @@ async fn new_video_job(
     let output_uri = format!("{}.mp4", filename);
 
     let job = TranscoderJob::new(filename, output_uri, new_dimensions.into(), None);
-    // dbg!(&filename, new_dimensions);
 
     let outstanding_jobs = con
         .rpush::<_, _, u128>(common::QUEUE_NAME, serde_json::to_string(&job).unwrap())
@@ -147,9 +124,7 @@ async fn new_video_job(
         info!("Enqueued new job. Outstanding job count: {outstanding_jobs}");
     }
 
-    // this will be converted into a JSON response
-    // with a status code of `201 Created`
-    (StatusCode::CREATED, Json(String::new()))
+    (StatusCode::CREATED, String::new())
 }
 
 #[derive(Deserialize)]

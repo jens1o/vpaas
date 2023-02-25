@@ -50,9 +50,14 @@ impl FromStr for FFMpegDuration {
         seconds_sum += minutes * 60;
         seconds_sum += seconds;
 
-        let seconds_sum = (seconds_sum as f64) + (1.0_f64 / milliseconds_parts as f64);
+        let mut seconds_sum = seconds_sum as f64;
 
-        Ok(FFMpegDuration(Duration::from_secs_f64(seconds_sum)))
+        // prevent division by zero
+        if milliseconds_parts != 0 {
+            seconds_sum += 1.0_f64 / milliseconds_parts as f64;
+        }
+
+        Ok(FFMpegDuration(Duration::from_secs_f64(dbg!(seconds_sum))))
     }
 }
 

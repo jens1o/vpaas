@@ -5,7 +5,6 @@ export default class MainRoute extends React.Component {
 
     constructor(props) {
         super(props);
-        this.state = { fileStream: null };
         this.fileRef = React.createRef();
     }
 
@@ -15,11 +14,11 @@ export default class MainRoute extends React.Component {
                 <Heading>Upload your video</Heading>
 
                 <section className='bg-gray-200 max-w-lg mx-auto mt-5 p-5 rounded-lg'>
-                    {(this.state.fileStream === null) ? (<form onSubmit={e => this.onFormSubmit(e)} encType="multipart/form-data">
+                    <form onSubmit={e => this.onFormSubmit(e)} encType="multipart/form-data">
                         <input type="file" ref={this.fileRef} className='inline-block' accept='video/*' />
 
                         <input type="submit" className='block bg-blue-400 p-5 m-5 mx-auto rounded-md text-gray-100' value={"Downscale to 240p"} />
-                    </form>) : (<div>uploaded</div>)}
+                    </form>
                 </section>
             </main>
         );
