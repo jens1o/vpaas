@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, Copy)]
 pub enum ProgressState {
     Pending,
-    Started,
+    InProgress,
     Finished,
 }
 

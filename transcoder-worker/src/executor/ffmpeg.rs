@@ -1,4 +1,4 @@
-use crate::{
+use common::{
     job,
     progress::{ProgressState, ProgressUpdate},
 };
@@ -95,14 +95,14 @@ pub async fn execute_job_using_ffmpeg(
     let stderr = child
         .stderr
         .take()
-        .expect("child did not have a handle to stderr");
+        .expect("child should have a handle to stderr");
 
     let mut stderr_reader = BufReader::new(stderr).lines();
 
     let stdout = child
         .stdout
         .take()
-        .expect("child did not have a handle to stderr");
+        .expect("child should have a handle to stdout");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
 
@@ -116,7 +116,7 @@ pub async fn execute_job_using_ffmpeg(
             if let Some(captures) = DURATION_REGEX.captures(&line) {
                 let duration = captures[1]
                     .parse::<FFMpegDuration>()
-                    .expect("duration is valid");
+                    .expect("duration given by ffmpeg is not valid");
 
                 let mut writer = file_duration.write().await;
                 *writer = Some(duration);
@@ -133,7 +133,6 @@ pub async fn execute_job_using_ffmpeg(
         // the `progress={continue, end}` is always the last. Everything before that belongs together
         // so as soon as we reached this line, we can process what we have received and notify about the progress
         if line.starts_with("progress=") {
-            dbg!(&progress_information);
             if let Some(out_time_ms) = progress_information
                 .get("out_time")
                 .and_then(|x| x.parse::<FFMpegDuration>().ok())
@@ -143,28 +142,27 @@ pub async fn execute_job_using_ffmpeg(
                     // and fire the event
                     on_progress(ProgressUpdate {
                         percentage: out_time_ms.0.as_secs_f64() / duration.0.as_secs_f64(),
-                        state: ProgressState::Started,
+                        state: ProgressState::InProgress,
                     });
                 } else {
                     // we cannot say how far we have got, yet we can send a pulse we're still alive
                     on_progress(ProgressUpdate {
                         percentage: f64::NAN,
-                        state: ProgressState::Started,
+                        state: ProgressState::InProgress,
                     });
                 }
             }
 
             progress_information.clear();
         } else {
-            let (key, value) = line.split_once('=').expect("ffmpeg upholds its invariants");
+            let (key, value) = line
+                .split_once('=')
+                .expect("ffmpeg did not uphold its invariants");
             progress_information.insert(key.into(), value.into());
         }
     }
 
-    let status = child
-        .wait()
-        .await
-        .expect("child process encountered an error");
+    let status = child.wait().await.expect("child process should not fail");
 
     // TODO: Handle other statusses gracefully
     assert_eq!(status.code(), Some(0));

@@ -1,6 +1,7 @@
 use crate::dimensions::Dimensions;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct TranscoderJob {
     input_uri: String,
     output_uri: String,
